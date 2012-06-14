@@ -52,6 +52,7 @@ volatile unsigned *gpio;
 // Heng Long tank bit-codes
 int idle = 0xFE3C0F00;
 int ignition = 0xFE3C10B0;
+int neutral = 0xFE3C0F00;
 int machine_gun = 0xFE3C107C;
 int cannon = 0xFE3E1030;
 int turret_left = 0xFE3C9018;
@@ -59,9 +60,10 @@ int turret_right = 0xFE3D103C;
 int turret_down = 0xFE3C5028;
 int turret_fire = 0xFE3C3030;
 int fwd_slow = 0xFE301008;
-int rev_slow = 0xFE3C1038;
-int left_slow = 0xFE3C081C;
-int right_slow = 0xFE3C1620;
+int fwd_fast = 0xFE1C1030;
+int rev_slow = 0xFE4C1024; //0xFE3C1038;
+int left_slow = 0xFE3C1620; //0xFE3C152C;
+int right_slow = 0xFE3C081C; //0xFE3C0B10;
 
 // Function declarations
 void setup_io();
@@ -79,7 +81,7 @@ int main(int argc, char **argv) {
   // Switch the relevant GPIO pin to output mode
   INP_GPIO(PIN); // must use INP_GPIO before we can use OUT_GPIO
   OUT_GPIO(PIN);
-  
+
   GPIO_CLR = 1<<PIN;
   
   // Send the idle and ignition codes
@@ -93,12 +95,42 @@ int main(int argc, char **argv) {
   {
     sendCode(ignition);
   }
-  
-  // Loop, sending the "forward" command indefinitely
-  printf("Forward\n");
-  while (1)
+  printf("Waiting for ignition\n");
+  for (i=0; i<200; i++) 
   {
-    sendCode(fwd_slow);
+    sendCode(fwd_fast);
+  }
+  
+  // Loop, sending movement commands indefinitely
+  while (1) {
+    printf("Forward\n");
+    for (i=0; i<200; i++) 
+    {
+      sendCode(fwd_fast);
+    }
+    //sendCode(neutral);
+    sendCode(idle);
+    printf("Reverse\n");
+    for (i=0; i<200; i++) 
+    {
+      sendCode(rev_slow);
+    }
+    //sendCode(neutral);
+    sendCode(idle);
+    printf("Left\n");
+    for (i=0; i<200; i++) 
+    {
+      sendCode(left_slow);
+    }
+    //sendCode(neutral);
+    sendCode(idle);
+    printf("Right\n");
+    for (i=0; i<200; i++) 
+    {
+      sendCode(right_slow);
+    }
+    //sendCode(neutral);
+    sendCode(idle);
   }
 
   return 0;
