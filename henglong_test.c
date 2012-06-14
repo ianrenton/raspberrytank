@@ -38,8 +38,12 @@ volatile unsigned *gpio;
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
 #define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
 
-#define GPIO_SET *(gpio+7)  // sets   bits which are 1, ignores bits which are 0
-#define GPIO_CLR *(gpio+10) // clears bits which are 1, ignores bits which are 0
+// N.B. These have been reversed compared to Gert & Dom's original code!
+// This is because the transistor board I use for talking to the Heng
+// Long RX18 inverts the signal.  So the GPIO_SET pointer here actually
+// sets the GPIO pin low - but that ends up as a high at the tank.
+#define GPIO_CLR *(gpio+7)  // sets   bits which are 1, ignores bits which are 0
+#define GPIO_SET *(gpio+10) // clears bits which are 1, ignores bits which are 0
 
 // GPIO pin that connects to the Heng Long main board
 // (Pin 7 is the top right pin on the Pi's GPIO, next to the yellow video-out)
@@ -73,8 +77,10 @@ int main(int argc, char **argv) {
   setup_io();
 
   // Switch the relevant GPIO pin to output mode
-  INP_GPIO(7); // must use INP_GPIO before we can use OUT_GPIO
-  OUT_GPIO(7);
+  INP_GPIO(PIN); // must use INP_GPIO before we can use OUT_GPIO
+  OUT_GPIO(PIN);
+  
+  GPIO_CLR = 1<<PIN;
   
   // Send the idle and ignition codes
   printf("Idle\n");
