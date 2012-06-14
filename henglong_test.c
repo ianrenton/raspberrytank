@@ -115,7 +115,7 @@ void sendCode(int code) {
   // Send the code itself, bit by bit using Manchester coding
   int i;
   for (i=0; i<32; i++) {
-    int bit = (code>>i) & 0x1;
+    int bit = (code>>(31-i)) & 0x1;
     sendBit(bit);
   }
   
