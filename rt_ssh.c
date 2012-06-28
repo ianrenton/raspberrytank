@@ -1,5 +1,5 @@
 //
-// Heng Long Tiger I tank controller for Raspberry Pi
+// Raspberry Tank SSH Remote Control script
 // Ian Renton, June 2012
 // http://ianrenton.com
 // 
@@ -22,7 +22,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-//#include <ncurses.h>
 
 #define PAGE_SIZE (4*1024)
 #define BLOCK_SIZE (4*1024)
@@ -51,7 +50,7 @@ volatile unsigned *gpio;
 #define PIN 7
 
 // Heng Long tank bit-codes
-int idle = 0xFE3C0F00;
+/*int idle = 0xFE3C0F00;
 int ignition = 0xFE3C10B0;
 int neutral = 0xFE3C0F00;
 int machine_gun = 0xFE3C107C;
@@ -61,10 +60,30 @@ int turret_right = 0xFE3D103C;
 int turret_down = 0xFE3C5028;
 int turret_fire = 0xFE3C3030;
 int fwd_slow = 0xFE301008;
-int fwd_fast = 0xFE1C1030;
+int fwd_fast = 0xFE28102C; //0xFE1C1030;
 int rev_slow = 0xFE4C1024; //0xFE3C1038;
+int rev_fast = 0xFE541000;
 int right_slow = 0xFE3C1620; //0xFE3C152C;
+int right_fast = 0xFE3C1818;
 int left_slow = 0xFE3C081C; //0xFE3C0B10;
+int left_fast = 0xFE400010;*/
+int idle = 0xFE40121C;
+int ignition = 0xFE401294;
+int left_slow = 0xFE400608;
+int left_fast = 0xFE400010;
+int right_slow = 0xFE401930;
+int right_fast = 0xFE401E2C;
+int fwd_slow = 0xFE200F34;
+int fwd_fast = 0xFE000F3C;
+int rev_slow = 0xFE580F08;
+int rev_fast = 0xFE780F00;
+int turret_left = 0xFE408F0C;
+int turret_right = 0xFE410F28;
+int turret_elev = 0xFE404F3C;
+int fire = 0xFE442F34;
+int machine_gun = 0xFE440F78;
+int recoil = 0xFE420F24;
+
 
 // Function declarations
 void setup_io();
@@ -119,23 +138,55 @@ int main(int argc, char **argv) {
       printf("Reverse\n");
       for (i=0; i<100; i++)
       {
-        sendCode(rev_slow);
+        sendCode(rev_fast);
       }
       sendCode(idle);
-    }
+    } 
     else if (inchar == 'a') {
       printf("Left\n");
-      for (i=0; i<50; i++)
+      for (i=0; i<10; i++)
       {
-        sendCode(left_slow);
+        sendCode(left_fast);
       }
       sendCode(idle);
     }
     else if (inchar == 'd') {
       printf("Right\n");
+      for (i=0; i<10; i++)
+      {
+        sendCode(right_fast);
+      }
+      sendCode(idle);
+    }
+    else if (inchar == 'q') {
+      printf("Turret Left\n");
+      for (i=0; i<25; i++)
+      {
+        sendCode(turret_left);
+      }
+      sendCode(idle);
+    }
+    else if (inchar == 'e') {
+      printf("Turret Right\n");
+      for (i=0; i<25; i++)
+      {
+        sendCode(turret_right);
+      }
+      sendCode(idle);
+    }
+    else if (inchar == 'z') {
+      printf("Turret Elev\n");
       for (i=0; i<50; i++)
       {
-        sendCode(right_slow);
+        sendCode(turret_elev);
+      }
+      sendCode(idle);
+    }
+    else if (inchar == 'x') {
+      printf("Fire\n");
+      for (i=0; i<50; i++)
+      {
+        sendCode(fire);
       }
       sendCode(idle);
     }
@@ -161,7 +212,7 @@ int main(int argc, char **argv) {
 void sendCode(int code) {
   // Send header "bit" (not a valid Manchester code)
   GPIO_SET = 1<<PIN;
-  usleep(600);
+  usleep(500);
   
   // Send the code itself, bit by bit using Manchester coding
   int i;
@@ -172,7 +223,7 @@ void sendCode(int code) {
   
   // Force a 4ms gap between messages
   GPIO_CLR = 1<<PIN;
-  usleep(4000);
+  usleep(3333);
 } // sendCode
 
 
@@ -183,14 +234,14 @@ void sendBit(int bit) {
 
   if (bit == 1) {
     GPIO_SET = 1<<PIN;
-    usleep(300);
+    usleep(250);
     GPIO_CLR = 1<<PIN;
-    usleep(300);
+    usleep(250);
   } else {
     GPIO_CLR = 1<<PIN;
-    usleep(300);
+    usleep(250);
     GPIO_SET = 1<<PIN;
-    usleep(300);
+    usleep(250);
   }
 } // sendBit
 
