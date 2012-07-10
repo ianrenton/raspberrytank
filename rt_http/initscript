@@ -1,0 +1,21 @@
+#! /bin/sh
+# /etc/init.d/rt_http
+
+# Carry out specific functions when asked to by the system
+case "$1" in
+  start)
+    echo "Starting Raspberry Tank HTTP Server"
+    /home/pi/rt_http/rt_http &
+    ;;
+  stop)
+    echo "Stopping Raspberry Tank HTTP Server"
+    killall rt_http
+    ;;
+  *)
+    echo "Usage: /etc/init.d/rt_http {start|stop}"
+    exit 1
+    ;;
+esac
+
+exit 0
+
