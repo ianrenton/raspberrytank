@@ -28,6 +28,7 @@ function load() {
 // Sets a command to either true or false by name, e.g. to go forwards use
 // set('forwards', true) and to stop going forwards, use set('forwards', false).
 function set(name, value) {
+  stop();
   command[name] = value;
   send();
   return true;
