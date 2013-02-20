@@ -1,0 +1,71 @@
+<!-- Raspberry Tank Web UI, February 2013, by Ian Renton.  Released into public domain without licence. -->
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"> 
+<html>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <head>
+    <title>Raspberry Tank - Touch Interface</title>
+    <script type="text/javascript" src="../js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="../js/mjpg-streamer.js"></script>
+    <script type="text/javascript" src="../js/javascript.js"></script>
+  </head>
+  <body onload="load()">
+    <div style="width:640px;margin:0 auto;">
+      <div id="webcam" style="width:640px;height:480px;background-color:gray;">
+      </div>
+      <table border="0" style="width:600px;height:600px;margin: 0 auto;">
+        <tr height="33%">
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('turret_left', true);" >
+              <img src="../img/turret-left.png" style="border:none;" />
+            </a>
+          </td>
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('forward', true);" >
+              <img src="../img/forward.png" style="border:none;" />
+            </a>
+          </td>
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('turret_right', true);" >
+              <img src="../img/turret-right.png" style="border:none;" />
+            </a>
+          </td>
+        </tr>
+        <tr height="33%">
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('left', true);" >
+              <img src="../img/left.png" style="border:none;" />
+            </a>
+          </td>
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="stop();" >
+              <img src="../img/stop.png" style="border:none;" />
+            </a>
+          </td>
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('right', true);" >
+              <img src="../img/right.png" style="border:none;" />
+            </a>
+          </td>
+        </tr>
+        <tr height="33%">
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('turret_elev', true);">
+              <img src="../img/turret-elev.png" style="border:none;" />
+            </a>
+          </td>
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('reverse', true);" >
+              <img src="../img/reverse.png" style="border:none;" />
+            </a>
+          </td>
+          <td width="33%" style="text-align:center;">
+            <a href="#" onclick="set('fire', true);" >
+              <img src="../img/fire.png" style="border:none;" />
+            </a>
+          </td>
+        </tr>
+      <tr><td colspan="3"><div class="data"></div></td></tr>
+      </table>
+    </div>
+  </body>
+</html>
