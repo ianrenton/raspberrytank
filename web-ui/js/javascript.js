@@ -11,7 +11,8 @@ var command = {
   'turret_left' : false,
   'turret_right' : false,
   'turret_elev' : false,
-  'fire' : false
+  'fire' : false,
+  'autonomy' : false
 }
 
 // Port on which the tank's control server runs
@@ -32,6 +33,20 @@ function set(name, value) {
   command[name] = value;
   send();
   return true;
+}
+
+// Toggles the state of autonomy.
+function toggleAutonomy() {
+  if (command['autonomy'] == true) {
+    command['autonomy'] = false;
+    $('span.autonomystate').html("OFF");
+    $('span.autonomybutton').html("Switch ON");
+  } else {
+    command['autonomy'] = true;
+    $('span.autonomystate').html("ON");
+    $('span.autonomybutton').html("Switch OFF");
+  }
+  send();
 }
 
 // Set all commands to false, in case there's been a glitch and something is
