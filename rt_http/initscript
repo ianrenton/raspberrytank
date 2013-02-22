@@ -1,21 +1,38 @@
-#! /bin/sh
-# /etc/init.d/rt_http
+#!/bin/sh
+# Raspberry Tank Controller - Debian Init Script
 
-# Carry out specific functions when asked to by the system
+set -e
+
+# Must be a valid filename
+NAME=rt_http
+PIDFILE=/var/run/$NAME.pid
+#This is the command to be run, give the full pathname
+DAEMON=/home/pi/rt_http/rt_http
+DAEMON_OPTS=""
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin:/home/pi/rt_http"
+
 case "$1" in
   start)
-    echo "Starting Raspberry Tank HTTP Server"
-    /home/pi/rt_http/rt_http &
-    ;;
+        echo -n "Starting daemon: "$NAME
+  start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+        echo "."
+	;;
   stop)
-    echo "Stopping Raspberry Tank HTTP Server"
-    killall rt_http
-    ;;
+        echo -n "Stopping daemon: "$NAME
+	start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE
+        echo "."
+	;;
+  restart)
+        echo -n "Restarting daemon: "$NAME
+	start-stop-daemon --stop --quiet --oknodo --retry 30 --pidfile $PIDFILE
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+	echo "."
+	;;
+
   *)
-    echo "Usage: /etc/init.d/rt_http {start|stop}"
-    exit 1
-    ;;
+	echo "Usage: "$1" {start|stop|restart}"
+	exit 1
 esac
 
 exit 0
-
