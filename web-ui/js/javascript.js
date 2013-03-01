@@ -69,9 +69,12 @@ function send() {
 
 // Gets the sensor data
 function updateSensorData() {
-  $.get("../sensordata.txt", "", function(data){
+  $.get(window.location.protocol+'//'+window.location.host + "/sensordata.txt", "", function(data){
     if (data != "") {
       $('div.data').html("<h1>" + data + "</h1>");
+    }
+    else {
+//      $('div.data').html("<h1>-</h1>");
     }
   }, "html");
 }
