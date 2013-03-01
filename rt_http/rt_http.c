@@ -68,7 +68,8 @@ int rev_fast = 0xFE780F00;
 int turret_left = 0xFE408F0C;
 int turret_right = 0xFE410F28;
 int turret_elev = 0xFE404F3C;
-int fire = 0xFE3E1030; //0xFE442F34;
+int fire = 0xFE442F34;
+//int fire = 0xFE3E1030;
 int machine_gun = 0xFE440F78;
 int recoil = 0xFE420F24;
 
@@ -381,7 +382,7 @@ void* launch_sensors() {
     //
 
     // Initial pause for safety
-    usleep(50000);
+    usleep(20000);
 
 	  if (ioctl(fd, I2C_SLAVE, addressSRF) < 0) {					// Set the port options and set the address of the device we wish to speak to
 		  message = "Unable to get bus access to talk to slave";
@@ -394,7 +395,7 @@ void* launch_sensors() {
 		  message = "Error writing to i2c slave\n";
 	  }
 	
-	  usleep(750000);												// This sleep waits for the ping to come back
+	  usleep(100000);												// This sleep waits for the ping to come back
 	
 	  buf[0] = 0;													// This is the register we wish to read from
 	
@@ -413,7 +414,7 @@ void* launch_sensors() {
     //
 
     // Initial pause for safety
-    usleep(50000);
+    usleep(20000);
 
 	  if (ioctl(fd, I2C_SLAVE, addressCMPS) < 0) {					// Set the port options and set the address of the device we wish to speak to
 		  message = "Unable to get bus access to talk to slave";
@@ -437,7 +438,7 @@ void* launch_sensors() {
 	  }
 
     // Debug
-    printf("SENSOR POLL   Range: %d   Bearing: %d   Pitch: %d   Roll: %d \n", tmpRange, tmpBearing, tmpPitch, tmpRoll);
+    //printf("SENSOR POLL   Range: %d   Bearing: %d   Pitch: %d   Roll: %d \n", tmpRange, tmpBearing, tmpPitch, tmpRoll);
 
     // Output to file
     FILE* f = fopen("/var/www/sensordata.txt", "w");
@@ -473,18 +474,23 @@ void* launch_autonomy() {
     pthread_mutex_unlock( &sensorDataMutex );
 
     // Check for forward obstacles.  Ranges <10 are errors, so ignore them.
-    if ((tmpRange < 100) && (tmpRange > 10)) {
+    if ((tmpRange < 120) && (tmpRange > 10)) {
       printf("Autonomy: Forward obstacle detected.\n");
       autonomySendCommand("00000000");
-      printf("Autonomy: Shooting...\n");
-      autonomySendCommand("00000001");
-      usleep(100000);
+      usleep(500000);
       printf("Autonomy: Reversing...\n");
       autonomySendCommand("01000000");
       usleep(500000);
+      autonomySendCommand("00000000");
+      usleep(500000);
+      printf("Autonomy: Shooting...\n");
+      autonomySendCommand("00000001");
+      usleep(2000000);
+      autonomySendCommand("00000000");
+      usleep(500000);
       printf("Autonomy: Turning...\n");
       autonomySendCommand("00010000");
-      usleep(500000);
+      usleep(2000000);
       autonomySendCommand("00000000");
       printf("Autonomy: Recheck Pause...\n");
       usleep(2000000);
