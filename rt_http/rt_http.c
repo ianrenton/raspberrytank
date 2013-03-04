@@ -1,5 +1,6 @@
 //
 // Raspberry Tank HTTP Remote Control script
+// Released under the BSD licence
 // Ian Renton, February 2013
 // http://ianrenton.com
 // 
