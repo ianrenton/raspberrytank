@@ -1,0 +1,17 @@
+<!-- Raspberry Tank Web UI, February 2013, by Ian Renton.  Released into public domain without licence. -->
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"> 
+<html>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <head>
+    <title>Raspberry Tank</title>
+    <script type="text/javascript" src="../js/jquery-1.7.2.min.js"></script>
+    <script type="text/javascript" src="../js/mjpg-streamer.js"></script>
+    <script type="text/javascript" src="../js/javascript.js"></script>
+    <script type="text/javascript" src="../js/fps-javascript.js"></script>
+  </head>
+  <body onload="load()" onkeyup="keyup(event)" onkeydown="keydown(event)" style="background-color:black;">
+      <div id="webcam" style="width:640px;height:480px;background-color:gray;margin:0 auto;">
+      </div>
+      <div><p style="text-align:center; color:gray">Move/turn: W S A D, Turret turn: Q E, Elevate: Z, Fire: Space, All stop: Enter</p></div>
+  </body>
+</html>

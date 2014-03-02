@@ -78,3 +78,45 @@ function updateSensorData() {
     }
   }, "html");
 }
+
+// FPS mode key input
+function keydown(e) {
+  keychanged(e, true);
+}
+
+function keyup(e) {
+  keychanged(e, false);
+}
+
+
+function keychanged(e, val) {
+  switch (e.keyCode) {
+    case 87:
+      set('forward', val);
+      break;
+    case 83:
+      set('reverse', val);
+      break;
+    case 65:
+      set('left', val);
+      break;
+    case 68:
+      set('right', val);
+      break;
+    case 81:
+      set('turret_left', val);
+      break;
+    case 69:
+      set('turret_right', val);
+      break;
+    case 90:
+      set('turret_elev', val);
+      break;
+    case 32:
+      set('fire', val);
+      break;
+    case 13:
+      stop();
+      break;
+  }
+}
