@@ -39,11 +39,20 @@ You can run it with any web server such as lighttpd.  If your document root
 isn't /var/www, you'll need to edit the directory that rt_http writes its
 sensordata.txt file too.
 
+Broken Stuff
+------------
+
+*rt_py* will possibly become a Python port of the main tank control code. However,
+it's currently not working, which I think is due to the lack of accuracy in
+Python's time.sleep() as opposed to C's usleep(). This means that a pure Python
+version may never happen. Feel free to take it and see if you can get it
+working.
+
 Old Stuff
 ---------
 
-henglong_test is a program to exercise the tank's drive motors in sequence.
+*henglong_test* is a program to exercise the tank's drive motors in sequence.
 
-rt_ssh operates each of the tank's primary functions via text entry, e.g.
+*rt_ssh* operates each of the tank's primary functions via text entry, e.g.
 "W" followed by "Enter" makes the tank move forward a bit.  Designed to be
 operated over SSH.
