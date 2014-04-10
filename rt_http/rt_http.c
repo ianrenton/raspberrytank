@@ -10,8 +10,11 @@
 // (http://www.rctanksaustralia.com/forum/viewtopic.php?p=1314#p1314)
 //
 
+// Raspberry Pi setup
 #define BCM2708_PERI_BASE        0x20000000
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO controller */
+#define PAGE_SIZE (4*1024)
+#define BLOCK_SIZE (4*1024)
 
 #include <stdio.h>
 #include <string.h>
@@ -28,14 +31,10 @@
 #include <pthread.h>
 #include "mongoose.h"
 
-#define PAGE_SIZE (4*1024)
-#define BLOCK_SIZE (4*1024)
-
+// I/O access
 int  mem_fd;
 char *gpio_mem, *gpio_map;
 char *spi0_mem, *spi0_map;
-
-// I/O access
 volatile unsigned *gpio;
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x) or SET_GPIO_ALT(x,y)
@@ -77,7 +76,7 @@ pthread_mutex_t userCommandMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t autonomyCommandMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t sensorDataMutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Mutex-controlled Variables
+// Mutex-controlled variables
 char* userCommand;
 char* autonomyCommand;
 int range;
@@ -99,7 +98,7 @@ void* autonomySendCommand(char* cmd);
 // Main
 int main(int argc, char **argv) { 
 
-  printf("\nRaspberry Tank HTTP Remote Control script\nIan Renton, February 2013\nhttp://ianrenton.com\n\n");
+  printf("\nRaspberry Tank HTTP Remote Control script\nIan Renton, April 2014\nhttp://raspberrytank.ianrenton.com\n\n");
 
   int g,rep,i;
   char inchar;
@@ -190,22 +189,11 @@ int main(int argc, char **argv) {
     }
   }
   
-  printf("Ignition Off\n");
-  for (i=0; i<10; i++)
-  {
-    sendCode(ignition);
-  }
-  printf("Idle\n");
-  for (i=0; i<40; i++)
-  {
-    sendCode(idle);
-  }
-  
   return 0;
 } // main
 
 
-// Sends one individual code to the main tank controller
+// Sends one individual opcode to the main tank controller
 void sendCode(int code) {
   // Build up the header bytes and CRC
   int fullCode = 0;
@@ -229,7 +217,7 @@ void sendCode(int code) {
   usleep(3333);
 } // sendCode
 
-// Calculates the CRC of a Heng Long command code
+// Calculates the CRC of a Heng Long opcode
 int CRC(int data)
 {
   int c;
@@ -244,10 +232,9 @@ int CRC(int data)
 } // CRC
 
 // Sends one individual bit using Manchester coding
-// 1 = high-low, 0 = low-high
+// 1 = high-low, 0 = low-high. CLR and SET do the opposite of what you think
+// due to the transistor circuit
 void sendBit(int bit) {
-  //printf("%d", bit);
-
   if (bit == 1) {
     GPIO_CLR = 1<<PIN;
     usleep(250);
@@ -324,56 +311,56 @@ void* launch_server() {
 // HTTP server callback
 static int http_callback(struct mg_connection *conn) {
 
-    const struct mg_request_info *request_info = mg_get_request_info(conn);
+  const struct mg_request_info *request_info = mg_get_request_info(conn);
 
-    char* tempCommand = malloc(sizeof(char)*13);
-    strncpy(&tempCommand[0], &request_info->query_string[0], 12);
-    tempCommand[12] = 0;
-    printf("Received command from HTTP: %.*s\n", 12, tempCommand);
+  char* tempCommand = malloc(sizeof(char)*13);
+  strncpy(&tempCommand[0], &request_info->query_string[0], 12);
+  tempCommand[12] = 0;
+  printf("Received command from HTTP: %.*s\n", 12, tempCommand);
 
-    // Set received, so send it over to the control thread
-    if ((tempCommand[0] == 's') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
-      pthread_mutex_lock( &userCommandMutex );
-      strncpy(&userCommand[0], &tempCommand[3], 9);
-      pthread_mutex_unlock( &userCommandMutex );
-      printf("Set motion command: %.*s\n", 9, userCommand);
+  // Set received, so send it over to the control thread
+  if ((tempCommand[0] == 's') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
+    pthread_mutex_lock( &userCommandMutex );
+    strncpy(&userCommand[0], &tempCommand[3], 9);
+    pthread_mutex_unlock( &userCommandMutex );
+    printf("Set motion command: %.*s\n", 9, userCommand);
 
-      // Send an HTTP header back to the client
-      mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-              "Content-Type: text/plain\r\n\r\n");
-    }
+    // Send an HTTP header back to the client
+    mg_printf(conn, "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n\r\n");
+  }
 
-    // Get received, so return sensor data
-    else if ((tempCommand[0] == 'g') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
-      // Get data from the variables while the mutex is locked
-      pthread_mutex_lock( &sensorDataMutex );
-      int tmpRange = range;
-      int tmpBearing = bearing;
-      int tmpPitch = pitch;
-      int tmpRoll = roll;
-      pthread_mutex_unlock( &sensorDataMutex );
-      printf("Sensor data acquired.\n");
+  // Get received, so return sensor data
+  else if ((tempCommand[0] == 'g') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
+    // Get data from the variables while the mutex is locked
+    pthread_mutex_lock( &sensorDataMutex );
+    int tmpRange = range;
+    int tmpBearing = bearing;
+    int tmpPitch = pitch;
+    int tmpRoll = roll;
+    pthread_mutex_unlock( &sensorDataMutex );
+    printf("Sensor data acquired.\n");
 
-      // Prepare the response
-      char response[100];
-      int contentLength = snprintf(response, sizeof(response),
-            "Range: %d   Bearing: %d   Pitch: %d   Roll: %d",
-            tmpRange, tmpBearing, tmpPitch, tmpRoll);
+    // Prepare the response
+    char response[100];
+    int contentLength = snprintf(response, sizeof(response),
+          "Range: %d   Bearing: %d   Pitch: %d   Roll: %d",
+          tmpRange, tmpBearing, tmpPitch, tmpRoll);
 
-      printf("Sending HTTP response: %s\n", response);
+    printf("Sending HTTP response: %s\n", response);
 
-      // Send an HTTP response back to the client
-      mg_printf(conn, "HTTP/1.1 200 OK\r\n"
-              "Content-Type: text/plain\r\n"
-              "Content-Length: %d\r\n"
-              "\r\n"
-              "%s",
-              contentLength, response);
-      
-    }
-    printf("Finished responding to HTTP request.\n");
+    // Send an HTTP response back to the client
+    mg_printf(conn, "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/plain\r\n"
+            "Content-Length: %d\r\n"
+            "\r\n"
+            "%s",
+            contentLength, response);
+    
+  }
+  printf("Finished responding to HTTP request.\n");
 
-    return 1;  // Mark as processed
+  return 1;  // Mark as processed
 }
 
 
@@ -456,9 +443,6 @@ void* launch_sensors() {
       if (tmpRoll > 127) tmpRoll = tmpRoll-256;
     }
 
-    // Debug
-    printf("SENSOR POLL   Range: %d   Bearing: %d   Pitch: %d   Roll: %d \n", tmpRange, tmpBearing, tmpPitch, tmpRoll);
-
     // Output to file
     FILE* f = fopen("/var/www/sensordata.txt", "w");
     fprintf(f, "Range: %d&nbsp;&nbsp;&nbsp;&nbsp;Bearing: %d&nbsp;&nbsp;&nbsp;&nbsp;Pitch: %d&nbsp;&nbsp;&nbsp;&nbsp;Roll: %d \n", tmpRange, tmpBearing, tmpPitch, tmpRoll);
@@ -477,9 +461,6 @@ void* launch_sensors() {
 
 // Launch autonomy thread
 void* launch_autonomy() {
-    //char* tempCommand = malloc(sizeof(char)*12);
-    //strncpy(&tempCommand[0], &request_info->query_string[0], 11);
-    //tempCommand[11] = 0;
 
   printf("Starting autonomy\n");
   printf("Autonomy: Driving forward.\n");
@@ -517,7 +498,6 @@ void* launch_autonomy() {
     }
     else
     {
-      //printf("Autonomy: Driving forward.\n");
       autonomySendCommand("10000000");
     }
 
@@ -526,10 +506,10 @@ void* launch_autonomy() {
   }
 }
 
+// Send a command from autonomy to the main control thread
 void* autonomySendCommand(char* cmd) {
   pthread_mutex_lock( &autonomyCommandMutex );
   strncpy(&autonomyCommand[0], &cmd[0], 8);
   autonomyCommand[9] = 0;
   pthread_mutex_unlock( &autonomyCommandMutex );
-  //printf("Autonomy set motion command: %.*s\n", 8, autonomyCommand);
 }
