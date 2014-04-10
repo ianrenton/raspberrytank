@@ -53,24 +53,24 @@ volatile unsigned *gpio;
 // (Pin 7 is the top right pin on the Pi's GPIO, next to the yellow video-out)
 #define PIN 7
 
-// Heng Long tank bit-codes
-int idle = 0x0040121C>>6;
-int ignition = 0x00401294>>6;
-int neutral = 0x003C0F00>>6;
-int left_slow = 0x00400608>>6;
-int left_fast = 0x00400010>>6;
-int right_slow = 0x00401930>>6;
-int right_fast = 0x00401E2C>>6;
-int fwd_slow = 0x00200F34>>6;
-int fwd_fast = 0x00000F3C>>6;
-int rev_slow = 0x00580F08>>6;
-int rev_fast = 0x00780F00>>6;
-int turret_left = 0x00408F0C>>6;
-int turret_right = 0x00410F28>>6;
-int turret_elev = 0x00404F3C>>6;
-int fire = 0x003E1030>>6; //0x00442F34;
-int machine_gun = 0x00440F78>>6;
-int recoil = 0x00420F24>>6;
+// Heng Long tank opcodes
+int idle =         0x10048;
+int ignition =     0x1004a;
+int neutral =      0x0f03c;
+int left_slow =    0x10018;
+int left_fast =    0x10000;
+int right_slow =   0x10064;
+int right_fast =   0x10078;
+int fwd_slow =     0x0803c;
+int fwd_fast =     0x0003c;
+int rev_slow =     0x1603c;
+int rev_fast =     0x1e03c;
+int turret_left =  0x1023c;
+int turret_right = 0x1043c;
+int turret_elev =  0x1013c;
+int fire =         0x0f840;
+int machine_gun =  0x1103d;
+int recoil =       0x1083c;
 
 // Mutexes
 pthread_mutex_t userCommandMutex = PTHREAD_MUTEX_INITIALIZER;
