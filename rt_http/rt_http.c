@@ -1,8 +1,7 @@
 //
 // Raspberry Tank HTTP Remote Control script
-// Released under the BSD licence
-// Ian Renton, February 2013
-// http://ianrenton.com
+// Ian Renton, April 2014
+// http://raspberrytank.ianrenton.com
 // 
 // Based on the Raspberry Pi GPIO example by Dom and Gert
 // (http://elinux.org/Rpi_Low-level_peripherals#GPIO_Driving_Example_.28C.29)
@@ -55,24 +54,23 @@ volatile unsigned *gpio;
 #define PIN 7
 
 // Heng Long tank bit-codes
-int idle = 0xFE40121C;
-int ignition = 0xFE401294;
-int neutral = 0xFE3C0F00;
-int left_slow = 0xFE400608;
-int left_fast = 0xFE400010;
-int right_slow = 0xFE401930;
-int right_fast = 0xFE401E2C;
-int fwd_slow = 0xFE200F34;
-int fwd_fast = 0xFE000F3C;
-int rev_slow = 0xFE580F08;
-int rev_fast = 0xFE780F00;
-int turret_left = 0xFE408F0C;
-int turret_right = 0xFE410F28;
-int turret_elev = 0xFE404F3C;
-int fire = 0xFE442F34;
-//int fire = 0xFE3E1030;
-int machine_gun = 0xFE440F78;
-int recoil = 0xFE420F24;
+int idle = 0x0040121C>>6;
+int ignition = 0x00401294>>6;
+int neutral = 0x003C0F00>>6;
+int left_slow = 0x00400608>>6;
+int left_fast = 0x00400010>>6;
+int right_slow = 0x00401930>>6;
+int right_fast = 0x00401E2C>>6;
+int fwd_slow = 0x00200F34>>6;
+int fwd_fast = 0x00000F3C>>6;
+int rev_slow = 0x00580F08>>6;
+int rev_fast = 0x00780F00>>6;
+int turret_left = 0x00408F0C>>6;
+int turret_right = 0x00410F28>>6;
+int turret_elev = 0x00404F3C>>6;
+int fire = 0x003E1030>>6; //0x00442F34;
+int machine_gun = 0x00440F78>>6;
+int recoil = 0x00420F24>>6;
 
 // Mutexes
 pthread_mutex_t userCommandMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -91,6 +89,7 @@ int roll;
 void setup_io();
 void sendCode(int code);
 void sendBit(int bit);
+int CRC(int data);
 void* launch_server();
 static int http_callback(struct mg_connection *conn);
 void* launch_sensors();
@@ -208,14 +207,20 @@ int main(int argc, char **argv) {
 
 // Sends one individual code to the main tank controller
 void sendCode(int code) {
-  // Send header "bit" (not a valid Manchester code)
+  // Build up the header bytes and CRC
+  int fullCode = 0;
+  fullCode |= CRC(code) << 2;
+  fullCode |= code << 6;
+  fullCode |= 0xFE000000;
+  
+  // Send the initial high pulse
   GPIO_CLR = 1<<PIN;
   usleep(500);
   
   // Send the code itself, bit by bit using Manchester coding
   int i;
   for (i=0; i<32; i++) {
-    int bit = (code>>(31-i)) & 0x1;
+    int bit = (fullCode>>(31-i)) & 0x1;
     sendBit(bit);
   }
   
@@ -224,6 +229,19 @@ void sendCode(int code) {
   usleep(3333);
 } // sendCode
 
+// Calculates the CRC of a Heng Long command code
+int CRC(int data)
+{
+  int c;
+  c = 0;
+  c ^= data & 0x03;
+  c ^= (data >> 2) & 0x0F;
+  c ^= (data >> 6) & 0x0F;
+  c ^= (data >> 10) & 0x0F;
+  c ^= (data >> 14) & 0x0F;
+  c ^= (data >> 18) & 0x0F;
+  return c;
+} // CRC
 
 // Sends one individual bit using Manchester coding
 // 1 = high-low, 0 = low-high
@@ -326,7 +344,7 @@ static int http_callback(struct mg_connection *conn) {
     }
 
     // Get received, so return sensor data
-    /*else if ((tempCommand[0] == 'g') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
+    else if ((tempCommand[0] == 'g') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
       // Get data from the variables while the mutex is locked
       pthread_mutex_lock( &sensorDataMutex );
       int tmpRange = range;
@@ -352,7 +370,7 @@ static int http_callback(struct mg_connection *conn) {
               "%s",
               contentLength, response);
       
-    }*/
+    }
     printf("Finished responding to HTTP request.\n");
 
     return 1;  // Mark as processed
@@ -383,7 +401,7 @@ void* launch_sensors() {
     //
 
     // Initial pause for safety
-    usleep(20000);
+    usleep(50000);
 
 	  if (ioctl(fd, I2C_SLAVE, addressSRF) < 0) {					// Set the port options and set the address of the device we wish to speak to
 		  message = "Unable to get bus access to talk to slave";
@@ -396,7 +414,7 @@ void* launch_sensors() {
 		  message = "Error writing to i2c slave\n";
 	  }
 	
-	  usleep(100000);												// This sleep waits for the ping to come back
+	  usleep(750000);												// This sleep waits for the ping to come back
 	
 	  buf[0] = 0;													// This is the register we wish to read from
 	
@@ -415,7 +433,7 @@ void* launch_sensors() {
     //
 
     // Initial pause for safety
-    usleep(20000);
+    usleep(50000);
 
 	  if (ioctl(fd, I2C_SLAVE, addressCMPS) < 0) {					// Set the port options and set the address of the device we wish to speak to
 		  message = "Unable to get bus access to talk to slave";
@@ -439,7 +457,7 @@ void* launch_sensors() {
 	  }
 
     // Debug
-    //printf("SENSOR POLL   Range: %d   Bearing: %d   Pitch: %d   Roll: %d \n", tmpRange, tmpBearing, tmpPitch, tmpRoll);
+    printf("SENSOR POLL   Range: %d   Bearing: %d   Pitch: %d   Roll: %d \n", tmpRange, tmpBearing, tmpPitch, tmpRoll);
 
     // Output to file
     FILE* f = fopen("/var/www/sensordata.txt", "w");
@@ -475,23 +493,22 @@ void* launch_autonomy() {
     pthread_mutex_unlock( &sensorDataMutex );
 
     // Check for forward obstacles.  Ranges <10 are errors, so ignore them.
-    if ((tmpRange < 120) && (tmpRange > 10)) {
+    if ((tmpRange < 100) && (tmpRange > 10)) {
       printf("Autonomy: Forward obstacle detected.\n");
       autonomySendCommand("00000000");
       usleep(500000);
       printf("Autonomy: Reversing...\n");
-      autonomySendCommand("01000000");
-      usleep(500000);
+      autonomySendCommand("02000000");
+      usleep(1000000);
       autonomySendCommand("00000000");
       usleep(500000);
       printf("Autonomy: Shooting...\n");
       autonomySendCommand("00000001");
-      usleep(2000000);
-      autonomySendCommand("00000000");
       usleep(500000);
+      autonomySendCommand("00000000");
       printf("Autonomy: Turning...\n");
       autonomySendCommand("00010000");
-      usleep(2000000);
+      usleep(1500000);
       autonomySendCommand("00000000");
       printf("Autonomy: Recheck Pause...\n");
       usleep(2000000);
