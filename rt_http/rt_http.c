@@ -53,23 +53,16 @@ volatile unsigned *gpio;
 #define PIN 7
 
 // Heng Long tank opcodes
-int idle =         0x10048;
-int ignition =     0x1004a;
-int neutral =      0x0f03c;
-int left_slow =    0x10018;
-int left_fast =    0x10000;
-int right_slow =   0x10064;
-int right_fast =   0x10078;
-int fwd_slow =     0x0803c;
-int fwd_fast =     0x0003c;
-int rev_slow =     0x1603c;
-int rev_fast =     0x1e03c;
-int turret_left =  0x1023c;
-int turret_right = 0x1043c;
-int turret_elev =  0x1013c;
-int fire =         0x0f840;
-int machine_gun =  0x1103d;
-int recoil =       0x1083c;
+const int IDLE =         0x1003c;
+const int IGNITION =     0x1003e;
+const int FORWARD =      0x0803c;
+const int REVERSE =      0x1803c;
+const int LEFT =         0x10010;
+const int RIGHT =        0x10064;
+const int TURRET_LEFT =  0x1023c;
+const int TURRET_RIGHT = 0x1043c;
+const int TURRET_ELEV =  0x1013c;
+const int FIRE =         0x100bc;
 
 // Mutexes
 pthread_mutex_t userCommandMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -118,21 +111,20 @@ int main(int argc, char **argv) {
   GPIO_SET = 1<<PIN;
   
   // Send the idle and ignition codes
-  printf("Idle\n");
+  printf("Waiting for ignition...\n");
   for (i=0; i<40; i++) 
   {
-    sendCode(idle);
+    sendCode(IDLE);
   }
-  printf("Ignition\n");
   for (i=0; i<10; i++) 
   {
-    sendCode(ignition);
+    sendCode(IGNITION);
   }
-  printf("Waiting for ignition\n");
   for (i=0; i<300; i++) 
   {
-    sendCode(idle);
+    sendCode(IDLE);
   }
+  printf("Ignition sequence finished.\n");
   
   // Launch HTTP server
   pthread_t httpThread; 
@@ -161,31 +153,31 @@ int main(int argc, char **argv) {
 
     if (copiedCommand[0] == '1') {
       // Forward
-      sendCode(fwd_slow);
+      sendCode(FORWARD);
     } else if (copiedCommand[1] == '1') {
       // Reverse
-      sendCode(rev_slow);
+      sendCode(REVERSE);
     } else if (copiedCommand[2] == '1') {
       //Left
-      sendCode(left_fast);
+      sendCode(LEFT);
     } else if (copiedCommand[3] == '1') {
       //Right
-      sendCode(right_slow);
+      sendCode(RIGHT);
     } else if (copiedCommand[4] == '1') {
       // Turret Left
-      sendCode(turret_left);
+      sendCode(TURRET_LEFT);
     } else if (copiedCommand[5] == '1') {
       // Turret Right
-      sendCode(turret_right);
+      sendCode(TURRET_RIGHT);
     } else if (copiedCommand[6] == '1') {
       // Turret Elev
-      sendCode(turret_elev);
+      sendCode(TURRET_ELEV);
     } else if (copiedCommand[7] == '1') {
       // Fire
-      sendCode(fire);
+      sendCode(FIRE);
     } else {
       // Idle
-      sendCode(neutral);
+      sendCode(IDLE);
     }
   }
   
@@ -316,14 +308,14 @@ static int http_callback(struct mg_connection *conn) {
   char* tempCommand = malloc(sizeof(char)*13);
   strncpy(&tempCommand[0], &request_info->query_string[0], 12);
   tempCommand[12] = 0;
-  printf("Received command from HTTP: %.*s\n", 12, tempCommand);
+  //printf("Received command from HTTP: %.*s\n", 12, tempCommand);
 
   // Set received, so send it over to the control thread
   if ((tempCommand[0] == 's') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
     pthread_mutex_lock( &userCommandMutex );
     strncpy(&userCommand[0], &tempCommand[3], 9);
     pthread_mutex_unlock( &userCommandMutex );
-    printf("Set motion command: %.*s\n", 9, userCommand);
+    //printf("Set motion command: %.*s\n", 9, userCommand);
 
     // Send an HTTP header back to the client
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
@@ -347,7 +339,7 @@ static int http_callback(struct mg_connection *conn) {
           "Range: %d   Bearing: %d   Pitch: %d   Roll: %d",
           tmpRange, tmpBearing, tmpPitch, tmpRoll);
 
-    printf("Sending HTTP response: %s\n", response);
+    //printf("Sending HTTP response: %s\n", response);
 
     // Send an HTTP response back to the client
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
@@ -358,7 +350,7 @@ static int http_callback(struct mg_connection *conn) {
             contentLength, response);
     
   }
-  printf("Finished responding to HTTP request.\n");
+  //printf("Finished responding to HTTP request.\n");
 
   return 1;  // Mark as processed
 }
@@ -463,7 +455,7 @@ void* launch_sensors() {
 void* launch_autonomy() {
 
   printf("Starting autonomy\n");
-  printf("Autonomy: Driving forward.\n");
+  //printf("Autonomy: Driving forward.\n");
   while(1) {
     // Get data from the variables while the mutex is locked
     pthread_mutex_lock( &sensorDataMutex );
@@ -475,26 +467,26 @@ void* launch_autonomy() {
 
     // Check for forward obstacles.  Ranges <10 are errors, so ignore them.
     if ((tmpRange < 100) && (tmpRange > 10)) {
-      printf("Autonomy: Forward obstacle detected.\n");
+      //printf("Autonomy: Forward obstacle detected.\n");
       autonomySendCommand("00000000");
       usleep(500000);
-      printf("Autonomy: Reversing...\n");
+      //printf("Autonomy: Reversing...\n");
       autonomySendCommand("02000000");
       usleep(1000000);
       autonomySendCommand("00000000");
       usleep(500000);
-      printf("Autonomy: Shooting...\n");
+      //printf("Autonomy: Shooting...\n");
       autonomySendCommand("00000001");
       usleep(500000);
       autonomySendCommand("00000000");
-      printf("Autonomy: Turning...\n");
+      //printf("Autonomy: Turning...\n");
       autonomySendCommand("00010000");
       usleep(1500000);
       autonomySendCommand("00000000");
-      printf("Autonomy: Recheck Pause...\n");
+      //printf("Autonomy: Recheck Pause...\n");
       usleep(2000000);
-      printf("Autonomy: Recheck Pause complete.\n");
-      printf("Autonomy: Driving forward.\n");
+      //printf("Autonomy: Recheck Pause complete.\n");
+      //printf("Autonomy: Driving forward.\n");
     }
     else
     {
