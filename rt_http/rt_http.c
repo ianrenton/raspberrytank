@@ -95,9 +95,9 @@ int main(int argc, char **argv) {
 
   int g,rep,i;
   char inchar;
-  userCommand = malloc(sizeof(char)*10);
-  autonomyCommand = malloc(sizeof(char)*10);
-  char* copiedCommand = malloc(sizeof(char)*10);
+  userCommand = malloc(sizeof(char)*11);
+  autonomyCommand = malloc(sizeof(char)*11);
+  char* copiedCommand = malloc(sizeof(char)*11);
 
   // Set up gpio pointer for direct register access
   setup_io();
@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
     strcpy(&copiedCommand[0], &userCommand[0]);
     pthread_mutex_unlock( &userCommandMutex );
 
-    if (copiedCommand[8] == '1') {
+    if (copiedCommand[9] == '1') {
       // Autonomy requested, so obey autonomy's commands not the user commands.
       pthread_mutex_lock( &autonomyCommandMutex );
       strcpy(&copiedCommand[0], &autonomyCommand[0]);
@@ -175,6 +175,9 @@ int main(int argc, char **argv) {
     } else if (copiedCommand[7] == '1') {
       // Fire
       sendCode(FIRE);
+    } else if (copiedCommand[8] == '1') {
+      // Ignition (in case it drops out)
+      sendCode(IGNITION);
     } else {
       // Idle
       sendCode(IDLE);
@@ -305,17 +308,17 @@ static int http_callback(struct mg_connection *conn) {
 
   const struct mg_request_info *request_info = mg_get_request_info(conn);
 
-  char* tempCommand = malloc(sizeof(char)*13);
-  strncpy(&tempCommand[0], &request_info->query_string[0], 12);
-  tempCommand[12] = 0;
-  //printf("Received command from HTTP: %.*s\n", 12, tempCommand);
+  char* tempCommand = malloc(sizeof(char)*14);
+  strncpy(&tempCommand[0], &request_info->query_string[0], 13);
+  tempCommand[13] = 0;
+  //printf("Received command from HTTP: %.*s\n", 13, tempCommand);
 
   // Set received, so send it over to the control thread
   if ((tempCommand[0] == 's') && (tempCommand[1] == 'e') && (tempCommand[2] == 't')) {
     pthread_mutex_lock( &userCommandMutex );
-    strncpy(&userCommand[0], &tempCommand[3], 9);
+    strncpy(&userCommand[0], &tempCommand[3], 10);
     pthread_mutex_unlock( &userCommandMutex );
-    //printf("Set motion command: %.*s\n", 9, userCommand);
+    //printf("Set motion command: %.*s\n", 10, userCommand);
 
     // Send an HTTP header back to the client
     mg_printf(conn, "HTTP/1.1 200 OK\r\n"
@@ -501,7 +504,7 @@ void* launch_autonomy() {
 // Send a command from autonomy to the main control thread
 void* autonomySendCommand(char* cmd) {
   pthread_mutex_lock( &autonomyCommandMutex );
-  strncpy(&autonomyCommand[0], &cmd[0], 8);
-  autonomyCommand[9] = 0;
+  strncpy(&autonomyCommand[0], &cmd[0], 9);
+  autonomyCommand[10] = 0;
   pthread_mutex_unlock( &autonomyCommandMutex );
 }

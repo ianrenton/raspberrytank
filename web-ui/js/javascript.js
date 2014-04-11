@@ -12,6 +12,7 @@ var command = {
   'turret_right' : false,
   'turret_elev' : false,
   'fire' : false,
+  'ignition' : false,
   'autonomy' : false
 }
 
@@ -114,6 +115,9 @@ function keychanged(e, val) {
       break;
     case 32:
       set('fire', val);
+      break;
+    case 73:
+      set('ignition', val);
       break;
     case 13:
       stop();
