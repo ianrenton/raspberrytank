@@ -7,7 +7,7 @@ set -e
 NAME=rt_http
 PIDFILE=/var/run/$NAME.pid
 #This is the command to be run, give the full pathname
-DAEMON=/home/pi/rt_http/rt_http
+DAEMON=/bin/bash /home/pi/rt_http/rt_http.sh
 DAEMON_OPTS=""
 
 export PATH="${PATH:+$PATH:}/usr/sbin:/sbin:/home/pi/rt_http"
