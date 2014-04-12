@@ -52,17 +52,33 @@ volatile unsigned *gpio;
 // (Pin 7 is the top right pin on the Pi's GPIO, next to the yellow video-out)
 #define PIN 7
 
-// Heng Long tank opcodes
+// HENG LONG TANK OPCODES:
+// We don't yet fully understand how the opcodes we send to the tank work. Specifically,
+// we don't understand how to control the speed and direction of the main motors
+// properly, but we do understand how to control just about everything else. Therefore
+// we have ended up with a system of "base opcodes" - premade codes for the stuff we
+// don't understand, but we know works - and "delta opcodes" - the bits we can "and" on
+// top of the base opcodes to trigger the extra functions that we do understand.
+// More info: raspberrytank.ianrenton.com/day-30-cracking-the-code-third-time-luckier/
+
+// BASE OPCODES
 const int IDLE =         0x1003c;
-const int IGNITION =     0x1003e;
 const int FORWARD =      0x0803c;
-const int REVERSE =      0x1803c;
-const int LEFT =         0x10010;
+const int REVERSE =      0x1803c; // Must be cancelled by a "forward", idle is not enough
+const int LEFT =         0x10010; // Slower than I would like
 const int RIGHT =        0x10064;
-const int TURRET_LEFT =  0x1023c;
-const int TURRET_RIGHT = 0x1043c;
-const int TURRET_ELEV =  0x1013c;
-const int FIRE =         0x100bc;
+
+// DELTA OPCODES
+const int MG_LED =       0x0001;
+const int IGNITION =     0x0002;
+const int FIRE =         0x0080;
+const int TURRET_ELEV =  0x0100;
+const int TURRET_LEFT =  0x0200;
+const int TURRET_RIGHT = 0x0400;
+const int RECOIL =       0x0800;
+const int MG_SOUND =     0x1000;
+
+///////////////////////////////////
 
 // Mutexes
 pthread_mutex_t userCommandMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -79,7 +95,8 @@ int roll;
 
 // Function declarations
 void setup_io();
-void sendCode(int code);
+int buildOpCode(char* cmd);
+void sendOpCode(int code);
 void sendBit(int bit);
 int CRC(int data);
 void* launch_server();
@@ -114,15 +131,15 @@ int main(int argc, char **argv) {
   printf("Waiting for ignition...\n");
   for (i=0; i<40; i++) 
   {
-    sendCode(IDLE);
+    sendOpCode(buildOpCode("0000000000")); // idle
   }
   for (i=0; i<10; i++) 
   {
-    sendCode(IGNITION);
+    sendOpCode(buildOpCode("0000000010")); // ignition
   }
   for (i=0; i<300; i++) 
   {
-    sendCode(IDLE);
+    sendOpCode(buildOpCode("0000000000")); // idle
   }
   printf("Ignition sequence finished.\n");
   
@@ -150,46 +167,65 @@ int main(int argc, char **argv) {
       strcpy(&copiedCommand[0], &autonomyCommand[0]);
       pthread_mutex_unlock( &autonomyCommandMutex );
     }
-
-    if (copiedCommand[0] == '1') {
-      // Forward
-      sendCode(FORWARD);
-    } else if (copiedCommand[1] == '1') {
-      // Reverse
-      sendCode(REVERSE);
-    } else if (copiedCommand[2] == '1') {
-      //Left
-      sendCode(LEFT);
-    } else if (copiedCommand[3] == '1') {
-      //Right
-      sendCode(RIGHT);
-    } else if (copiedCommand[4] == '1') {
-      // Turret Left
-      sendCode(TURRET_LEFT);
-    } else if (copiedCommand[5] == '1') {
-      // Turret Right
-      sendCode(TURRET_RIGHT);
-    } else if (copiedCommand[6] == '1') {
-      // Turret Elev
-      sendCode(TURRET_ELEV);
-    } else if (copiedCommand[7] == '1') {
-      // Fire
-      sendCode(FIRE);
-    } else if (copiedCommand[8] == '1') {
-      // Ignition (in case it drops out)
-      sendCode(IGNITION);
-    } else {
-      // Idle
-      sendCode(IDLE);
-    }
+    
+    sendOpCode(buildOpCode(copiedCommand));
   }
   
   return 0;
 } // main
 
 
+// Takes a command from the web UI or autonomy (like "001000010" for "turn left and 
+// fire") and builds a Heng Long format binary opcode to send to the tank.
+int buildOpCode(char* cmd) {
+
+  int opCode = 0;
+  
+  // The first four characters represent the motion of the tank. These are used to
+  // select the "base opcode" (the bit we use without properly understanding it).
+  // Because we use this "base opcode" fudge we can only select at most one of these
+  // directions.
+  // 0000 = idle  1000 = forwards   0100 = reverse   0010 = left    0001 = right
+  if (cmd[0] == '1') {
+    opCode = FORWARD;
+  } else if (cmd[1] == '1') {
+    opCode = REVERSE;
+  } else if (cmd[2] == '1') {
+    opCode = LEFT;
+  } else if (cmd[3] == '1') {
+    opCode = RIGHT;
+  } else {
+    opCode = IDLE;
+  }
+  
+  // Now we check the other characters in the string to see what they're demanding
+  // anything. These are the features in the opcode that we do understand - we can
+  // just set certain bits high to achieve what we want (the "delta opcode"s). This
+  // means we can have several of these active at once if we want.
+  // char 4 = turret left   char 5 = turret right   char 6 = turret elevate
+  // char 7 = fire          char 8 = ignition
+  if (cmd[4] == '1') {
+    opCode = opCode | TURRET_LEFT;
+  }
+  if (cmd[5] == '1') {
+    opCode = opCode | TURRET_RIGHT;
+  }
+  if (cmd[6] == '1') {
+    opCode = opCode | TURRET_ELEV;
+  }
+  if (cmd[7] == '1') {
+    opCode = opCode | FIRE;
+  }
+  if (cmd[8] == '1') {
+    opCode = opCode | IGNITION;
+  }
+  
+  return opCode;
+} // buildOpCode
+
+
 // Sends one individual opcode to the main tank controller
-void sendCode(int code) {
+void sendOpCode(int code) {
   // Build up the header bytes and CRC
   int fullCode = 0;
   fullCode |= CRC(code) << 2;
@@ -471,21 +507,21 @@ void* launch_autonomy() {
     // Check for forward obstacles.  Ranges <10 are errors, so ignore them.
     if ((tmpRange < 100) && (tmpRange > 10)) {
       //printf("Autonomy: Forward obstacle detected.\n");
-      autonomySendCommand("00000000");
+      autonomySendCommand("000000000"); // idle
       usleep(500000);
       //printf("Autonomy: Reversing...\n");
-      autonomySendCommand("02000000");
+      autonomySendCommand("010000000"); // reverse
       usleep(1000000);
-      autonomySendCommand("00000000");
+      autonomySendCommand("000000000"); // idle
       usleep(500000);
       //printf("Autonomy: Shooting...\n");
-      autonomySendCommand("00000001");
+      autonomySendCommand("000000010"); // fire
       usleep(500000);
-      autonomySendCommand("00000000");
+      autonomySendCommand("000000000"); // idle
       //printf("Autonomy: Turning...\n");
-      autonomySendCommand("00010000");
+      autonomySendCommand("000100000"); // right
       usleep(1500000);
-      autonomySendCommand("00000000");
+      autonomySendCommand("000000000"); // idle
       //printf("Autonomy: Recheck Pause...\n");
       usleep(2000000);
       //printf("Autonomy: Recheck Pause complete.\n");
@@ -493,7 +529,7 @@ void* launch_autonomy() {
     }
     else
     {
-      autonomySendCommand("10000000");
+      autonomySendCommand("100000000");
     }
 
     // Don't need to run that fast, sensor polling is pretty slow anyway.
