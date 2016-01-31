@@ -1,8 +1,8 @@
 raspberrytank
 =============
 
-Program(s) used to control a Heng Long RC tank using a Raspberry Pi.  For more
-information on the Raspberry Tank project, go to http://bit.ly/raspberrytank
+This repository contains a number of programs used to control a Heng Long RC tank using a Raspberry Pi.  For more
+information on the Raspberry Tank project, go to [https://ianrenton.com/hardware/raspberry-tank/](https://ianrenton.com/hardware/raspberry-tank/).
 
 rt_http
 -------
@@ -15,9 +15,9 @@ rangefinder and compass module over I2C.
 You can compile it by running "make" in its directory, assuming you have make
 installed.  You also need libpthreads, and kernel modules for I2C if you
 intend to use the I2C devices.  It should build mongoose automatically,
-if not, run "cd mongoose && make linux".
+if not, run `cd mongoose && make linux`.
 
-You need to run it as root so that it can talk to the GPIO pins. ("sudo ./rt_http")
+You need to run it as root so that it can talk to the GPIO pins. (`sudo ./rt_http`)
 
 It was designed for use with the Web UI, though you can probably figure out
 how to use it without :)
